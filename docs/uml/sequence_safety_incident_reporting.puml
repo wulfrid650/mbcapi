@@ -1,0 +1,29 @@
+@startuml
+title Sequence - Signalement d'un incident de securite chantier
+
+actor "Chef de chantier" as Chef
+participant "ChefChantierController\nreportIncident()" as Controller
+participant "ChantierService" as ChantierService
+participant "Stockage public" as Storage
+database SafetyIncident
+actor Administrateur as Admin
+
+Chef -> Controller: POST /api/chef-chantier/incidents\n(project_id, type, severity, title,\ndescription, location, photos[])
+Controller -> ChantierService: reportIncident(payload, userId)
+
+loop pour chaque photo
+  ChantierService -> Storage: store(photo, "safety-incidents")
+  Storage --> ChantierService: url
+end
+
+ChantierService -> SafetyIncident: create(project_id, daily_log_id?, date, time,\ntype, severity, title, description,\npersons_involved, injuries, witnesses,\nphotos, status=open, reported_by)
+SafetyIncident --> ChantierService: incident
+
+alt gravite serious ou critical
+  ChantierService -> Admin: notifier les administrateurs par email
+end
+
+ChantierService --> Controller: incident cree
+Controller --> Chef: success + incident
+
+@enduml

@@ -1,0 +1,79 @@
+# ================================================================================
+# CONFIGURATION APACHE POUR API LARAVEL MBC - apgw.madibabc.com
+# ================================================================================
+# Ce fichier DOIT être placé dans le dossier /public/ de Laravel
+# Vérifiez que mod_headers et mod_rewrite sont activés:
+#   sudo a2enmod headers rewrite
+#   sudo systemctl restart apache2
+# ================================================================================
+
+# =============================================================================
+# CORS Headers - Gestion des requêtes Cross-Origin depuis madibabc.com
+# =============================================================================
+<IfModule mod_headers.c>
+    # Détecter l'origine de la requête
+    SetEnvIf Origin "^https://(www\.)?madibabc\.com$" CORS_ALLOW_ORIGIN=$0
+    SetEnvIf Origin "^http://localhost:300[0-9]$" CORS_ALLOW_ORIGIN=$0
+    SetEnvIf Origin "^http://127\.0\.0\.1:300[0-9]$" CORS_ALLOW_ORIGIN=$0
+    
+    # Envoyer les en-têtes CORS si l'origine est autorisée
+    Header always set Access-Control-Allow-Origin "%{CORS_ALLOW_ORIGIN}e" env=CORS_ALLOW_ORIGIN
+    Header always set Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD"
+    Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-Requested-With, Accept, Origin, X-XSRF-TOKEN"
+    Header always set Access-Control-Max-Age "86400"
+</IfModule>
+
+# =============================================================================
+# Rewrite Rules - Routage Laravel
+# =============================================================================
+<IfModule mod_rewrite.c>
+    <IfModule mod_negotiation.c>
+        Options -MultiViews -Indexes
+    </IfModule>
+
+    RewriteEngine On
+
+    # -------------------------------------------------------
+    # IMPORTANT: Gérer les requêtes OPTIONS (preflight CORS)
+    # -------------------------------------------------------
+    RewriteCond %{REQUEST_METHOD} OPTIONS
+    RewriteRule ^(.*)$ $1 [R=200,L]
+
+    # -------------------------------------------------------
+    # Passer les en-têtes d'authentification à PHP
+    # -------------------------------------------------------
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    RewriteCond %{HTTP:x-xsrf-token} .
+    RewriteRule .* - [E=HTTP_X_XSRF_TOKEN:%{HTTP:X-XSRF-Token}]
+
+    # -------------------------------------------------------
+    # Supprimer les slashes de fin (sauf pour les dossiers)
+    # -------------------------------------------------------
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_URI} (.+)/$
+    RewriteRule ^ %1 [L,R=301]
+
+    # -------------------------------------------------------
+    # Router toutes les requêtes vers index.php (Laravel)
+    # -------------------------------------------------------
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule ^ index.php [L]
+</IfModule>
+
+# =============================================================================
+# Sécurité supplémentaire
+# =============================================================================
+# Empêcher l'accès aux fichiers sensibles
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+# Désactiver l'affichage des répertoires
+Options -Indexes
+
+# =============================================================================
+# FIN DE CONFIGURATION
+# =============================================================================

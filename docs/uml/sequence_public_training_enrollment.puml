@@ -1,0 +1,47 @@
+@startuml
+title Sequence - Inscription publique a une formation avec initiation de paiement
+
+actor Visiteur
+participant "PublicController\nformationInscription()" as PublicController
+participant "FormationSessionSchedulerService" as Scheduler
+database Formation
+database "FormationSession" as Session
+database "FormationEnrollment" as Enrollment
+participant "FormationEnrollmentWindowService" as Window
+database Payment
+participant "MonerooService" as Moneroo
+
+Visiteur -> PublicController: POST /api/public/formation-inscription\n(first_name, last_name, email, phone, formation_id, session_id?)
+PublicController -> Formation: find(formation_id)
+PublicController -> Scheduler: ensureUpcomingSessions(formation)
+Scheduler --> PublicController: sessions a jour
+
+alt session fournie
+  PublicController -> Session: verifier session rattachee a la formation
+else session absente
+  PublicController -> Session: chercher prochaine session disponible
+end
+
+PublicController -> Enrollment: rechercher inscription pending_payment\npar email / user / formation / session
+alt inscription existante
+  PublicController -> Enrollment: update(coordonnees candidat)
+  PublicController -> Window: reopenPaymentWindow(enrollment, null, "public_inscription")
+  Window --> PublicController: enrollment reouvert
+else nouvelle inscription
+  PublicController -> Enrollment: create(status=pending_payment,\namount_paid=0,\nmetadata.payment_window_*)
+  Enrollment --> PublicController: enrollment cree
+end
+
+PublicController -> Payment: rechercher paiement pending\npour payable=FormationEnrollment
+PublicController -> Moneroo: initiatePayment(amount, payable_type,\npayable_id, reference?, return_url,\nmetadata formation/session)
+Moneroo --> PublicController: success(reference, payment_id, checkout_url)\nou echec recuperable
+
+PublicController -> Enrollment: update(metadata.payment_reference,\nmetadata.payment_id)
+
+alt paiement initialise
+  PublicController --> Visiteur: enrollment_id, checkout_url,\npayment_url, payment_reference,\nexpires_at, status=pending_payment
+else fallback lien de reprise
+  PublicController --> Visiteur: enrollment_id, payment_url,\npayment_reference, expires_at,\npayment_retry_required=true
+end
+
+@enduml

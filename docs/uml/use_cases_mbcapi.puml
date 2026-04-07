@@ -1,0 +1,124 @@
+@startuml
+title MBC API - Diagramme de cas d'utilisation
+
+left to right direction
+skinparam packageStyle rectangle
+
+actor Visiteur
+actor Apprenant
+actor Client
+actor Formateur
+actor "Chef de chantier" as Chef
+actor "Secretaire" as Secretaire
+actor Administrateur as Admin
+actor Moneroo
+actor "Service de recu/email" as Mailer
+
+rectangle "Plateforme MBC" {
+  package "Public" {
+    usecase UC_PublicBrowse as "Consulter services,\nformations, equipe,\nportfolio et pages legales"
+    usecase UC_Contact as "Soumettre une demande\nde contact ou devis"
+    usecase UC_PublicEnroll as "Demander une inscription\na une formation"
+  }
+
+  package "Paiement" {
+    usecase UC_InitPay as "Initialiser un paiement"
+    usecase UC_VerifyPay as "Verifier le statut\nd'un paiement"
+    usecase UC_ManualValidate as "Valider manuellement\nun paiement"
+    usecase UC_GenerateReceipt as "Generer et envoyer\nun recu"
+    usecase UC_PaymentLink as "Generer un lien\nde paiement"
+    usecase UC_Promo as "Appliquer / verifier\nun code promo"
+  }
+
+  package "Formation" {
+    usecase UC_MyFormations as "Consulter mes formations\net mes recus"
+    usecase UC_ManageTrainings as "Gerer formations\net sessions"
+    usecase UC_ManageEnrollments as "Gerer les inscriptions"
+    usecase UC_Attendance as "Saisir les presences"
+    usecase UC_CreateEval as "Creer une evaluation"
+    usecase UC_GradeEval as "Noter les apprenants"
+  }
+
+  package "Chantier" {
+    usecase UC_CreateProject as "Creer un chantier"
+    usecase UC_ValidateProject as "Valider la creation\nd'un chantier"
+    usecase UC_AssignClient as "Affecter un client\nau chantier"
+    usecase UC_UpdateProgress as "Mettre a jour\nla progression"
+    usecase UC_ManagePhases as "Demander / approuver\nun changement de phase"
+    usecase UC_ReportIncident as "Signaler un incident\nde securite"
+    usecase UC_ViewProject as "Suivre le chantier\net consulter les photos"
+    usecase UC_ProjectMsg as "Envoyer un message\nlie a un chantier"
+  }
+
+  package "Administration" {
+    usecase UC_Auth as "S'inscrire, se connecter,\ncompleter un profil invite"
+    usecase UC_UsersRoles as "Gerer utilisateurs,\nroles et invitations"
+    usecase UC_Settings as "Gerer les parametres\net contenus publics"
+    usecase UC_Reports as "Produire des rapports\noperationnels et financiers"
+  }
+}
+
+Visiteur --> UC_PublicBrowse
+Visiteur --> UC_Contact
+Visiteur --> UC_PublicEnroll
+Visiteur --> UC_VerifyPay
+
+Apprenant --> UC_Auth
+Apprenant --> UC_MyFormations
+Apprenant --> UC_InitPay
+Apprenant --> UC_VerifyPay
+Apprenant --> UC_Promo
+
+Client --> UC_Auth
+Client --> UC_ViewProject
+Client --> UC_ProjectMsg
+Client --> UC_InitPay
+Client --> UC_VerifyPay
+
+Formateur --> UC_ManageTrainings
+Formateur --> UC_Attendance
+Formateur --> UC_CreateEval
+Formateur --> UC_GradeEval
+
+Chef --> UC_CreateProject
+Chef --> UC_UpdateProgress
+Chef --> UC_ManagePhases
+Chef --> UC_ReportIncident
+Chef --> UC_ProjectMsg
+
+Secretaire --> UC_ManageEnrollments
+Secretaire --> UC_ManualValidate
+Secretaire --> UC_GenerateReceipt
+Secretaire --> UC_PaymentLink
+Secretaire --> UC_ValidateProject
+Secretaire --> UC_AssignClient
+Secretaire --> UC_ManagePhases
+Secretaire --> UC_Reports
+Secretaire --> UC_UsersRoles
+
+Admin --> UC_UsersRoles
+Admin --> UC_Settings
+Admin --> UC_ManageTrainings
+Admin --> UC_ManageEnrollments
+Admin --> UC_ManualValidate
+Admin --> UC_GenerateReceipt
+Admin --> UC_ValidateProject
+Admin --> UC_AssignClient
+Admin --> UC_ManagePhases
+Admin --> UC_Reports
+
+UC_PublicEnroll .> UC_InitPay : <<include>>
+UC_InitPay .> UC_Promo : <<extend>>
+UC_ManualValidate .> UC_GenerateReceipt : <<include>>
+UC_CreateProject .> UC_ValidateProject : <<extend>>
+UC_UpdateProgress .> UC_ViewProject : <<extend>>
+UC_ReportIncident .> UC_Reports : <<extend>>
+UC_UsersRoles .> UC_Auth : <<include>>
+
+Moneroo --> UC_InitPay
+Moneroo --> UC_VerifyPay
+Mailer --> UC_GenerateReceipt
+Mailer --> UC_UsersRoles
+Mailer --> UC_ReportIncident
+
+@enduml

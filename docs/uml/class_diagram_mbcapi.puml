@@ -1,0 +1,438 @@
+@startuml
+title MBC API - Diagramme de classes metier consolide
+
+hide empty methods
+hide circle
+skinparam packageStyle rectangle
+skinparam linetype ortho
+skinparam classAttributeIconSize 0
+
+legend left
+<<observed>> : directement observe dans le dump SQL ou les modeles
+<<inferred>> : relation ou interpretation deduite du code applicatif
+endlegend
+
+package "Identite & acces" {
+  class User <<observed>> {
+    +id: bigint
+    +name: string
+    +email: string
+    +role: enum
+    +active_role_id: bigint?
+    +employee_id: string?
+    +phone: string?
+    +is_active: bool
+    +profile_completed: bool
+    +company_name: string?
+    +formation_id: bigint?
+  }
+
+  class Role <<observed>> {
+    +id: bigint
+    +slug: string
+    +name: string
+    +is_staff: bool
+    +can_self_register: bool
+  }
+
+  class UserRole <<observed>> {
+    +id: bigint
+    +user_id: bigint
+    +role_id: bigint
+    +is_primary: bool
+    +assigned_at: timestamp
+    +metadata: json
+  }
+
+  class ActivityLog <<observed>> {
+    +id: bigint
+    +user_id: bigint?
+    +action: string
+    +description: text
+    +subject_type: string?
+    +subject_id: bigint?
+    +created_at: timestamp
+  }
+}
+
+package "Catalogue public & CRM" {
+  class Service <<observed>> {
+    +id: bigint
+    +title: string
+    +slug: string
+    +starting_price: decimal?
+    +is_active: bool
+    +is_featured: bool
+  }
+
+  class TeamMember <<observed>> {
+    +id: bigint
+    +first_name: string
+    +last_name: string
+    +position: string
+    +department: string?
+    +show_on_website: bool
+    +user_id: bigint?
+  }
+
+  class ContactRequest <<observed>> {
+    +id: bigint
+    +quote_number: string?
+    +name: string
+    +email: string
+    +subject: string
+    +service_type: string?
+    +type: string
+    +status: string
+    +assigned_to: bigint?
+  }
+}
+
+package "Formation" {
+  class Formation <<observed>> {
+    +id: bigint
+    +title: string
+    +slug: string
+    +duration_hours: int
+    +duration_days: int?
+    +price: decimal
+    +inscription_fee: decimal
+    +level: string
+    +category: string
+    +max_students: int
+    +formateur_id: bigint?
+  }
+
+  class FormationSession <<observed>> {
+    +id: bigint
+    +formation_id: bigint
+    +formateur_id: bigint?
+    +start_date: date
+    +end_date: date
+    +location: string?
+    +status: string
+    +max_students: int
+  }
+
+  class FormationEnrollment <<observed>> {
+    +id: bigint
+    +user_id: bigint?
+    +formation_id: bigint?
+    +session_id: bigint
+    +first_name: string?
+    +last_name: string?
+    +email: string?
+    +status: string
+    +amount_paid: decimal
+    +payment_complete: bool
+    +progression: int
+    +promo_code_id: bigint?
+  }
+
+  class Attendance <<observed>> {
+    +id: bigint
+    +user_id: bigint
+    +formation_session_id: bigint
+    +date: date
+    +status: string
+    +marked_by: bigint?
+  }
+
+  class Evaluation <<observed>> {
+    +id: bigint
+    +formation_session_id: bigint
+    +title: string
+    +type: string
+    +max_score: decimal
+    +passing_score: decimal
+    +date: date
+    +created_by: bigint
+  }
+
+  class EvaluationResult <<observed>> {
+    +id: bigint
+    +evaluation_id: bigint
+    +user_id: bigint
+    +score: decimal?
+    +status: string
+    +graded_by: bigint?
+  }
+
+  class PromoCode <<observed>> {
+    +id: bigint
+    +code: string
+    +type: enum
+    +value: decimal
+    +max_uses: int?
+    +used_count: int
+    +created_by: bigint
+    +formations: json?
+    +is_active: bool
+  }
+
+  class PromoCodeUsage <<observed>> {
+    +id: bigint
+    +promo_code_id: bigint
+    +user_id: bigint?
+    +guest_email: string?
+    +payment_id: bigint?
+    +discount_applied: decimal
+  }
+}
+
+package "Paiement" {
+  class Payment <<observed>> {
+    +id: bigint
+    +reference: string
+    +user_id: bigint?
+    +payable_type: string?
+    +payable_id: bigint?
+    +amount: decimal
+    +currency: string
+    +method: string
+    +status: string
+    +purpose: string?
+    +promo_code_id: bigint?
+    +validated_by: bigint?
+    +receipt_number: string?
+  }
+
+  class FinancialReport <<observed>> {
+    +id: bigint
+    +title: string
+    +period_start: date?
+    +period_end: date?
+    +type: string
+    +file_path: string
+    +generated_by: bigint?
+    +status: string
+  }
+}
+
+package "Chantier & portfolio" {
+  class Project <<observed>> {
+    +id: bigint
+    +name: string
+    +address: string
+    +status: string
+    +start_date: date?
+    +expected_end_date: date?
+    +client_id: bigint
+    +manager_id: bigint?
+  }
+
+  class ProjectPhase <<observed>> {
+    +id: bigint
+    +project_id: bigint
+    +name: string
+    +status: string
+    +start_date: date?
+    +end_date: date?
+  }
+
+  class Equipment <<observed>> {
+    +id: bigint
+    +name: string
+    +serial_number: string?
+    +status: enum
+    +current_project_id: bigint?
+  }
+
+  class PortfolioProject <<observed>> {
+    +id: bigint
+    +title: string
+    +slug: string
+    +category: string
+    +status: enum
+    +progress: int
+    +budget: string?
+    +created_by: bigint?
+    +client_id: bigint?
+    +chef_chantier_id: bigint?
+    +team_ids: json?
+  }
+
+  class ProgressUpdate <<observed>> {
+    +id: bigint
+    +portfolio_project_id: bigint
+    +title: string?
+    +description: text?
+    +progress: int
+    +photos: json?
+  }
+
+  class ProjectUpdate <<observed>> {
+    +id: bigint
+    +portfolio_project_id: bigint
+    +title: string?
+    +description: text?
+    +date: date
+    +author_name: string?
+    +images_count: int
+    +status: string
+  }
+
+  class ProjectReport <<observed>> {
+    +id: bigint
+    +portfolio_project_id: bigint
+    +title: string
+    +period: string
+    +type: string
+    +author_name: string
+    +date: date
+  }
+
+  class DailyLog <<observed>> {
+    +id: bigint
+    +project_id: bigint
+    +date: date
+    +notes: text?
+    +author_or_creator_id: bigint
+  }
+
+  class SafetyIncident <<observed>> {
+    +id: bigint
+    +project_id: bigint
+    +daily_log_id: bigint?
+    +date: date
+    +type: string
+    +severity: string
+    +title: string?
+    +status: string
+    +reported_by: bigint
+    +resolved_by: bigint?
+  }
+
+  class Media <<observed>> {
+    +id: bigint
+    +daily_log_id: bigint?
+    +safety_incident_id: bigint?
+    +portfolio_project_id: bigint?
+    +url: string
+    +type: string
+  }
+
+  class Message <<observed>> {
+    +id: bigint
+    +sender_id: bigint?
+    +recipient_id: bigint?
+    +portfolio_project_id: bigint?
+    +subject: string
+    +type: string
+  }
+
+  class Testimonial <<observed>> {
+    +id: bigint
+    +author_name: string
+    +rating: int
+    +project_type: string?
+    +portfolio_project_id: bigint?
+    +is_approved: bool
+  }
+
+  class ConstructionTeam <<observed>> {
+    +id: bigint
+    +name: string
+    +leader_name: string
+    +members_count: int
+    +specialization: string
+    +projects_count: int
+    +status: string
+  }
+}
+
+User "1" -- "0..*" ActivityLog : genere >
+User "1" -- "0..*" TeamMember : compte lie >
+User "1" -- "0..*" ContactRequest : assigne_a >
+
+User "1" -- "0..*" UserRole
+Role "1" -- "0..*" UserRole
+User "0..*" --> "1" Role : activeRole
+
+User "1" -- "0..*" Formation : formateur >
+Formation "1" -- "0..*" FormationSession
+Formation "1" -- "0..*" FormationEnrollment
+FormationSession "1" -- "0..*" FormationEnrollment
+User "1" -- "0..*" FormationEnrollment : apprenant >
+PromoCode "0..1" -- "0..*" FormationEnrollment : remise >
+
+FormationSession "1" -- "0..*" Attendance
+User "1" -- "0..*" Attendance : apprenant >
+User "1" -- "0..*" Attendance : marque_par >
+
+FormationSession "1" -- "0..*" Evaluation
+User "1" -- "0..*" Evaluation : cree_par >
+Evaluation "1" -- "0..*" EvaluationResult
+User "1" -- "0..*" EvaluationResult : apprenant >
+User "1" -- "0..*" EvaluationResult : corrige_par >
+
+User "1" -- "0..*" PromoCode : cree_par >
+PromoCode "1" -- "0..*" PromoCodeUsage
+User "1" -- "0..*" PromoCodeUsage
+Payment "1" -- "0..*" PromoCodeUsage
+
+User "1" -- "0..*" Payment : payeur >
+User "1" -- "0..*" Payment : valide_par >
+PromoCode "0..1" -- "0..*" Payment
+Payment ..> FormationEnrollment : payable polymorphe
+Payment ..> PortfolioProject : payable polymorphe <<inferred>>
+Payment ..> User : payable lien direct <<inferred>>
+User "1" -- "0..*" FinancialReport : genere >
+
+User "1" -- "0..*" Project : client >
+User "1" -- "0..*" Project : manager >
+Project "1" -- "0..*" ProjectPhase
+Project "1" -- "0..*" DailyLog
+Project "1" -- "0..*" SafetyIncident
+Project "1" -- "0..*" Equipment
+
+User "1" -- "0..*" PortfolioProject : createur >
+User "1" -- "0..*" PortfolioProject : client >
+User "1" -- "0..*" PortfolioProject : chef_chantier >
+PortfolioProject "1" -- "0..*" ProgressUpdate
+PortfolioProject "1" -- "0..*" ProjectUpdate
+PortfolioProject "1" -- "0..*" ProjectReport
+PortfolioProject "1" -- "0..*" DailyLog
+PortfolioProject "1" -- "0..*" SafetyIncident
+PortfolioProject "1" -- "0..*" Media
+PortfolioProject "1" -- "0..*" Message
+PortfolioProject "1" -- "0..*" Testimonial
+DailyLog "1" -- "0..*" Media
+SafetyIncident "1" -- "0..*" Media
+DailyLog "0..1" -- "0..*" SafetyIncident
+User "1" -- "0..*" SafetyIncident : reporte_par >
+User "1" -- "0..*" SafetyIncident : resolu_par >
+User "1" -- "0..*" Message : expediteur >
+User "1" -- "0..*" Message : destinataire >
+
+PortfolioProject ..> ConstructionTeam : affectation equipe via team_ids <<inferred>>
+PortfolioProject ..> User : team_ids[] peut aussi referencer des users <<inferred>>
+ContactRequest ..> PortfolioProject : metadata.project_id <<inferred>>
+ContactRequest ..> User : metadata.user_id <<inferred>>
+DailyLog ..> PortfolioProject : code Eloquent actuel <<inferred>>
+SafetyIncident ..> PortfolioProject : code Eloquent actuel <<inferred>>
+
+note right of DailyLog
+Le dump SQL et le code ne sont pas parfaitement alignes.
+Le modele applicatif ajoute plus de champs que le dump exporte.
+end note
+
+note left of Project
+La base physique porte aussi un noyau
+operationnel `projects / project_phases / equipment`.
+Il coexiste avec `portfolio_projects`.
+end note
+
+note bottom of Media
+Le dump expose portfolio_project_id.
+Le modele Media pointe vers portfolio_id.
+Relation marquee comme observee mais implementation incoherente.
+end note
+
+note bottom of ProjectUpdate
+Le code chantier utilise ProjectUpdate.
+Le modele PortfolioProject expose aussi ProgressUpdate.
+Deux representations d'avancement coexistent.
+end note
+
+@enduml

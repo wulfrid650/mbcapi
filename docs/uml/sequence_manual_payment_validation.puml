@@ -1,0 +1,42 @@
+@startuml
+title Sequence - Validation manuelle d'un paiement par le secretariat
+
+actor Secretaire
+participant "SecretaireController\nvalidatePayment()" as Controller
+database Payment
+database "FormationEnrollment" as Enrollment
+participant "FormationEnrollmentWindowService" as Window
+participant "Stockage public" as Storage
+participant "ActivityLogService" as ActivityLog
+participant "ReceiptService" as Receipt
+participant "Processus de fin de requete" as AsyncTermination
+
+Secretaire -> Controller: POST /api/secretaire/paiements/{id}/validate\n(notes, amount?, method, reference, proof)
+Controller -> Payment: findOrFail(id) + charger payable
+Payment --> Controller: paiement
+
+alt payable = FormationEnrollment
+  Controller -> Window: expireIfNeeded(enrollment)
+  Window --> Controller: statut verifie
+end
+
+Controller -> Storage: stocker la preuve de paiement
+Storage --> Controller: proofPath + proofUrl
+
+Controller -> Payment: update(status=completed,\nvalidated_at, validated_by,\nmethod, metadata.manual_validation)
+
+alt paiement de formation
+  Controller -> Enrollment: update(status=confirmed,\npaid_at, notes,\nmetadata.validation_*)
+  Controller -> ActivityLog: log("Inscription validee", enrollment, actor)
+end
+
+Controller -> ActivityLog: log("Paiement valide manuellement", payment, actor)
+Controller -> Receipt: generateReceipt(payment)
+Receipt --> Controller: recu genere ou erreur loggee
+
+Controller -> AsyncTermination: planifier envoi email du recu
+AsyncTermination -> Receipt: sendReceiptByEmail(payment, email)
+
+Controller --> Secretaire: success + paiement recharge
+
+@enduml

@@ -1,0 +1,37 @@
+@startuml
+title Sequence - Invitation d'un employe puis activation du compte
+
+actor Administrateur as Admin
+actor Employe
+participant "AuthController\ncreateEmployee()" as CreateEmployee
+participant "AuthController\nverifyInvitation()" as VerifyInvitation
+participant "AuthController\ncompleteProfile()" as CompleteProfile
+database User
+participant "Mailer\nStaffInvitation" as Mailer
+participant "Sanctum" as Sanctum
+
+== Creation de l'invitation ==
+
+Admin -> CreateEmployee: POST /api/auth/create-employee\n(name, email, role, employee_id, ...)
+CreateEmployee -> User: create(password genere ou fourni,\nprofile_completed=false, is_active=true)
+CreateEmployee -> User: generateInvitationToken()
+CreateEmployee -> Mailer: send(StaffInvitation, invitation_url, plainPassword)
+CreateEmployee --> Admin: user + invitation_url + expires_at
+
+== Verification du lien ==
+
+Employe -> VerifyInvitation: POST /api/auth/verify-invitation\n(token)
+VerifyInvitation -> User: findBy(invitation_token)
+VerifyInvitation --> Employe: invitation valide + infos utilisateur
+
+== Completion du profil ==
+
+Employe -> CompleteProfile: POST /api/auth/complete-profile\n(token, password, phone, emergency_*)
+CompleteProfile -> User: findBy(invitation_token)
+CompleteProfile -> User: update(password, phone,\nemergency_contact, profile_completed=true)
+CompleteProfile -> User: clearInvitationToken()
+CompleteProfile -> Sanctum: createToken("auth_token")
+Sanctum --> CompleteProfile: token
+CompleteProfile --> Employe: user actif + token
+
+@enduml

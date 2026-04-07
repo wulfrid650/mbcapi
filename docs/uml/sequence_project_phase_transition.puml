@@ -1,0 +1,31 @@
+@startuml
+title Sequence - Demande puis approbation d'un changement de phase chantier
+
+actor "Chef de chantier" as Chef
+actor "Secretaire/Admin" as Staff
+participant "ChefChantierController\nrequestPhaseTransition()" as ChefController
+participant "SecretaireController\nupdateProjetPhase()" as StaffController
+participant "ProjectPhaseWorkflowService" as Workflow
+database PortfolioProject
+
+== Demande de changement ==
+
+Chef -> ChefController: POST /api/chef-chantier/chantiers/{id}/phase-transition\n(to_phase, note)
+ChefController -> PortfolioProject: findOrFail(id)
+ChefController -> Workflow: requestTransition(project, chef, to_phase, note)
+Workflow -> PortfolioProject: update(metadata.phase_workflow.pending_request)
+Workflow --> ChefController: mode=pending_approval,\nphase_state
+ChefController --> Chef: "Demande de changement de phase envoyee"
+
+== Approbation staff ==
+
+Staff -> StaffController: POST /api/secretaire/projets/{id}/phase-transition\n(action=approve, note)
+StaffController -> PortfolioProject: findOrFail(id)
+StaffController -> Workflow: approvePending(project, staff, note)
+Workflow -> PortfolioProject: lire pending_request
+Workflow -> PortfolioProject: maj metadata.phase_workflow.history,\ncurrent_phase, pending_request=null
+Workflow -> PortfolioProject: maj progress au plancher de phase\net status=in_progress si besoin
+Workflow --> StaffController: mode=approved,\nphase_state
+StaffController --> Staff: "Demande de phase approuvee"
+
+@enduml
