@@ -284,26 +284,30 @@ class PaymentController extends Controller
             'formation_id' => 'nullable|integer',
         ]);
 
-        $promo = \App\Models\PromoCode::where('code', $request->code)->first();
+        $validation = $this->promoCodeService->validateAndApply(
+            (string) $request->code,
+            (float) $request->amount,
+            $request->integer('formation_id') ?: null,
+            Auth::id(),
+            $request->input('guest_email')
+        );
 
-        if (!$promo || !$promo->isValid($request->formation_id)) {
+        if (!$validation['valid']) {
             return response()->json([
                 'success' => false,
-                'message' => 'Code promo invalide ou expiré',
+                'message' => $validation['error'] ?? 'Code promo invalide ou expiré',
             ], 400);
         }
-
-        $discount = $promo->calculateDiscount($request->amount);
-        $newAmount = max(0, $request->amount - $discount);
 
         return response()->json([
             'success' => true,
             'data' => [
-                'code' => $promo->code,
-                'discount' => $discount,
-                'new_amount' => $newAmount,
-                'type' => $promo->type,
-                'value' => $promo->value,
+                'code' => $validation['promo_code']->code,
+                'discount' => $validation['discount'],
+                'new_amount' => $validation['new_amount'],
+                'type' => $validation['type'],
+                'value' => $validation['value'],
+                'description' => $validation['description'],
             ],
         ]);
     }
@@ -596,6 +600,7 @@ class PaymentController extends Controller
                 'method' => $payment->method,
                 'description' => $payment->description,
                 'metadata' => $payment->metadata,
+                'formation_id' => $enrollment?->formation_id ?? ($payment->metadata['formation_id'] ?? null),
                 'payment_url' => $paymentUrl,
                 'expires_at' => $enrollment ? $this->enrollmentWindowService->getExpiresAt($enrollment)->toISOString() : null,
                 'remaining_seconds' => $enrollment && $enrollment->status === 'pending_payment'

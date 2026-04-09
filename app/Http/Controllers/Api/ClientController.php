@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\FormationEnrollment;
 use App\Models\PortfolioProject;
 use App\Models\Payment;
 use App\Models\ContactRequest;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
@@ -343,7 +345,14 @@ class ClientController extends Controller
         // Inclure TOUS les paiements (pending ET completed)
         $payments = Payment::where('user_id', $user->id)
             ->whereIn('status', ['pending', 'completed'])
-            ->with('payable.formation') // Eager load pour afficher le nom
+            ->with([
+                'payable' => function ($morphTo) {
+                    $morphTo->morphWith([
+                        FormationEnrollment::class => ['formation'],
+                        User::class => [],
+                    ]);
+                },
+            ])
             ->orderByDesc('created_at')
             ->get();
 
@@ -376,13 +385,16 @@ class ClientController extends Controller
             ], 400);
         }
 
-        // TODO: Intégrer avec Moneroo pour créer le paiement
-        // Pour l'instant, retourner une URL factice
-        $paymentUrl = env('APP_URL') . '/paiement/moneroo?ref=' . $payment->reference;
+        $paymentUrl = rtrim((string) config('app.frontend_url', 'http://localhost:3000'), '/')
+            . '/paiement/link/'
+            . $payment->reference;
 
         return response()->json([
             'success' => true,
-            'payment_url' => $paymentUrl,
+            'data' => [
+                'payment_url' => $paymentUrl,
+                'reference' => $payment->reference,
+            ],
         ]);
     }
 

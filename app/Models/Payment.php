@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Support\Str;
 
 class Payment extends Model
 {
@@ -109,9 +110,11 @@ class Payment extends Model
      */
     public static function generateReference(): string
     {
-        $year = date('Y');
-        $count = static::whereYear('created_at', $year)->count() + 1;
-        return sprintf('PAY-%s-%06d', $year, $count);
+        do {
+            $reference = sprintf('PAY-%s-%s', date('Y'), strtoupper(Str::random(8)));
+        } while (static::where('reference', $reference)->exists());
+
+        return $reference;
     }
 
     public function user(): BelongsTo

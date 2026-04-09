@@ -1609,7 +1609,7 @@ class SecretaireController extends Controller
                 'payment_link_url' => $paymentLink,
                 'link_access_count' => 0,
                 'link_retry_count' => 0,
-                'return_url' => $request->header('Origin') . '/paiement/callback', // Default callback
+                'return_url' => "{$frontendUrl}/paiement/confirmation",
             ],
         ]);
 
